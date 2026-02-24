@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chord Files</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0c0a; --surface:#161410; --surface2:#1e1c18; --border:#2e2b24;
+    --gold:#c9a84c; --gold-dim:#7a6530; --cream:#e8e0cc; --muted:#6b6450;
+    --funk:#d4633a; --jazz:#4a8fa8; --math:#9b6fd4; --text:#cfc8b4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;min-height:100vh;padding:2rem;}
+  .grain{position:fixed;inset:0;pointer-events:none;z-index:100;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity:0.4;}
+  header{text-align:center;margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+  h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.2rem);color:var(--cream);letter-spacing:-0.02em;line-height:1;}
+  h1 em{color:var(--gold);font-style:italic;}
+  .subtitle{font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-top:0.5rem;}
+  .controls{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:center;margin-bottom:2rem;}
+  .control-group{display:flex;flex-direction:column;gap:0.3rem;}
+  label{font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);}
+  select,button{background:var(--surface2);border:1px solid var(--border);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:0.85rem;padding:0.6rem 1rem;
+    cursor:pointer;outline:none;transition:all 0.2s;border-radius:2px;}
+  select:hover,select:focus{border-color:var(--gold-dim);color:var(--cream);}
+  .btn-generate{background:var(--gold);color:var(--bg);font-weight:500;border-color:var(--gold);
+    padding:0.6rem 2rem;letter-spacing:0.08em;font-size:0.75rem;text-transform:uppercase;}
+  .btn-generate:hover{background:var(--cream);border-color:var(--cream);}
+  .vibe-toggle{display:flex;}
+  .vibe-btn{border-radius:0;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.6rem 1.1rem;}
+  .vibe-btn:not(:last-child){border-right:none;}
+  .vibe-btn.active.jazz{background:var(--jazz);color:var(--bg);border-color:var(--jazz);}
+  .vibe-btn.active.funk{background:var(--funk);color:var(--bg);border-color:var(--funk);}
+  .vibe-btn.active.math{background:var(--math);color:var(--bg);border-color:var(--math);}
+  #output{max-width:1100px;margin:0 auto;opacity:0;transition:opacity 0.4s;}
+  #output.visible{opacity:1;}
+  .section-title{font-size:0.65rem;letter-spacing:0.25em;text-transform:uppercase;
+    margin-bottom:1rem;display:flex;align-items:center;gap:0.8rem;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .chords-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:1.2rem;margin-bottom:2.5rem;}
+  .chord-card{background:var(--surface);border:1px solid var(--border);padding:1rem 0.8rem;
+    text-align:center;transition:border-color 0.2s,transform 0.15s;cursor:default;}
+  .chord-card:hover{transform:translateY(-2px);}
+  .chord-name{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--cream);margin-bottom:0.2rem;}
+  .chord-type-tag{font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem;}
+  .chord-type-tag.jazz{color:var(--jazz);}
+  .chord-type-tag.funk{color:var(--funk);}
+  .chord-type-tag.math{color:var(--math);}
+  .chord-voicing-name{font-size:0.52rem;color:var(--gold-dim);margin-bottom:0.4rem;letter-spacing:0.04em;}
+  .chord-intervals{font-size:0.58rem;color:var(--muted);margin-top:0.4rem;letter-spacing:0.04em;}
+  .chord-desc{font-size:0.52rem;color:#5a4a7a;margin-top:0.3rem;font-style:italic;}
+  .key-info{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--gold);
+    padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;gap:2rem;flex-wrap:wrap;align-items:center;}
+  .key-info-item{display:flex;flex-direction:column;gap:0.2rem;}
+  .key-info-label{font-size:0.55rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);}
+  .key-info-value{font-size:0.9rem;color:var(--cream);}
+  .palette-note{font-size:0.6rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6;
+    border-left:2px solid var(--border);padding-left:0.8rem;}
+  .legend{display:flex;gap:1.5rem;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;}
+  .legend-lbl{font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);}
+  .legend-item{display:flex;align-items:center;gap:0.4rem;font-size:0.62rem;}
+  .progressions-list{display:flex;flex-direction:column;gap:0.8rem;margin-bottom:2.5rem;}
+  .progression-row{background:var(--surface);border:1px solid var(--border);
+    padding:1rem 1.2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  .prog-label{font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);min-width:120px;flex-shrink:0;}
+  .prog-chords{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;flex:1;}
+  .prog-chord{background:var(--surface2);border:1px solid var(--border);padding:0.3rem 0.7rem;
+    font-size:0.8rem;color:var(--cream);font-family:'Playfair Display',serif;}
+  .prog-arrow{color:var(--border);font-size:0.7rem;}
+  .prog-feel{font-size:0.6rem;color:var(--gold-dim);margin-left:auto;font-style:italic;padding-left:1rem;}
+  @keyframes fadeSlide{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .chord-card{animation:fadeSlide 0.25s ease both;}
+  .chord-card:nth-child(2){animation-delay:0.04s;}
+  .chord-card:nth-child(3){animation-delay:0.08s;}
+  .chord-card:nth-child(4){animation-delay:0.12s;}
+  .chord-card:nth-child(5){animation-delay:0.16s;}
+  .chord-card:nth-child(6){animation-delay:0.20s;}
+  .chord-card:nth-child(7){animation-delay:0.24s;}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<header>
+  <h1>Chord <em>Files</em></h1>
+  <p class="subtitle">Jazz · Funk · Math/Alt Arrangement Generator</p>
+</header>
+<div class="controls">
+  <div class="control-group">
+    <label>Root Key</label>
+    <select id="keySelect">
+      <option value="C">C</option><option value="Db">D&#9837;</option><option value="D">D</option>
+      <option value="Eb">E&#9837;</option><option value="E">E</option><option value="F">F</option>
+      <option value="F#">F&#9839;</option><option value="G">G</option><option value="Ab">A&#9837;</option>
+      <option value="A">A</option><option value="Bb">B&#9837;</option><option value="B">B</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Mode</label>
+    <select id="modeSelect">
+      <option value="major">Major</option>
+      <option value="minor">Minor (Dorian)</option>
+      <option value="blues">Blues</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Vibe</label>
+    <div class="vibe-toggle">
+      <button class="vibe-btn jazz active" data-vibe="jazz">Jazz</button>
+      <button class="vibe-btn funk" data-vibe="funk">Funk</button>
+      <button class="vibe-btn math" data-vibe="math">Math/Alt</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>&nbsp;</label>
+    <button class="btn-generate" id="generateBtn">Generate &#8594;</button>
+  </div>
+</div>
+<div id="output"></div>
+
+<script>
+// ─── Core Constants ───────────────────────────────────────────────────────────
+
+var CHROMATIC = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+var OPEN_SEMI = [4,9,2,7,11,4]; // E A D G B e
+
+var SCALES = {
+  major:[0,2,4,5,7,9,11],
+  minor:[0,2,3,5,7,9,10],
+  blues:[0,3,5,6,7,10]
+};
+
+var DEGREE_NAMES = ['I','II','III','IV','V','VI','VII'];
+
+// ─── Chord Palettes ───────────────────────────────────────────────────────────
+//
+// JAZZ: Full, smooth voicings. maj7, m7, m7b5, dom7, maj9.
+//       Voice leading is the point. Chords ring out and resolve.
+//       Degrees stay close to strict diatonic harmony.
+//
+// FUNK: Lean, punchy, partial voicings. Dominant 9ths, 13ths, 7#9,
+//       minor 9ths. Everything wants to groove rhythmically.
+//       Degrees pushed toward dominant/minor-dominant sounds.
+//       I stays dominant (not major 7) — creates that mixolydian funk feel.
+
+var CHORD_QUALITIES = {
+
+  // ── Jazz Major ─────────────────────────────────────────────────────────────
+  jazz_major: [
+    // I    — Imaj7: smooth, stable tonic
+    {sym:'maj7',   intervals:[0,4,7,11], label:'Imaj7',   iStr:'R  3  5  7'},
+    // II   — IIm7: the workhorse ii chord
+    {sym:'m7',     intervals:[0,3,7,10], label:'IIm7',    iStr:'R  b3  5  b7'},
+    // III  — IIIm7
+    {sym:'m7',     intervals:[0,3,7,10], label:'IIIm7',   iStr:'R  b3  5  b7'},
+    // IV   — IVmaj7: warm subdominant
+    {sym:'maj7',   intervals:[0,4,7,11], label:'IVmaj7',  iStr:'R  3  5  7'},
+    // V    — V7: dominant pull back to I
+    {sym:'7',      intervals:[0,4,7,10], label:'V7',      iStr:'R  3  5  b7'},
+    // VI   — VIm7
+    {sym:'m7',     intervals:[0,3,7,10], label:'VIm7',    iStr:'R  b3  5  b7'},
+    // VII  — VIIm7b5: jazzy half-diminished
+    {sym:'m7b5',   intervals:[0,3,6,10], label:'VIIm7b5', iStr:'R  b3  b5  b7'}
+  ],
+
+  // ── Jazz Minor (Dorian) ────────────────────────────────────────────────────
+  jazz_minor: [
+    {sym:'m7',     intervals:[0,3,7,10], label:'Im7',     iStr:'R  b3  5  b7'},
+    {sym:'m7',     intervals:[0,3,7,10], label:'IIm7',    iStr:'R  b3  5  b7'},
+    {sym:'maj7',   intervals:[0,4,7,11], label:'bIIImaj7',iStr:'R  3  5  7'},
+    {sym:'m7',     intervals:[0,3,7,10], label:'IVm7',    iStr:'R  b3  5  b7'},
+    {sym:'7',      intervals:[0,4,7,10], label:'V7',      iStr:'R  3  5  b7'},
+    {sym:'7',      intervals:[0,4,7,10], label:'bVI7',    iStr:'R  3  5  b7'},
+    {sym:'m7b5',   intervals:[0,3,6,10], label:'VIIm7b5', iStr:'R  b3  b5  b7'}
+  ],
+
+  // ── Jazz Blues ─────────────────────────────────────────────────────────────
+  jazz_blues: [
+    {sym:'7',      intervals:[0,4,7,10], label:'I7',      iStr:'R  3  5  b7'},
+    {sym:'m7',     intervals:[0,3,7,10], label:'IIm7',    iStr:'R  b3  5  b7'},
+    {sym:'m7',     intervals:[0,3,7,10], label:'IIIm7',   iStr:'R  b3  5  b7'},
+    {sym:'7',      intervals:[0,4,7,10], label:'IV7',     iStr:'R  3  5  b7'},
+    {sym:'7',      intervals:[0,4,7,10], label:'V7',      iStr:'R  3  5  b7'},
+    {sym:'m7b5',   intervals:[0,3,6,10], label:'VIm7b5',  iStr:'R  b3  b5  b7'}
+  ],
+
+  // ── Funk Major ─────────────────────────────────────────────────────────────
+  // I becomes dominant 9 (mixolydian feel — the James Brown/Nile Rodgers sound)
+  // IV becomes 9 or 13 — brighter dominant color
+  // II becomes m9 — darker, groovier than plain m7
+  // V becomes 7#9 — the Hendrix chord, maximum tension
+  funk_major: [
+    // I    — dominant 9: mixolydian, doesn't need to resolve
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'I9',      iStr:'R  3  5  b7  9'},
+    // II   — minor 9: darker and groovier than m7
+    {sym:'m9',     intervals:[0,3,7,10,2],  label:'IIm9',    iStr:'R  b3  5  b7  9'},
+    // III  — minor 7: functional passing chord
+    {sym:'m7',     intervals:[0,3,7,10],    label:'IIIm7',   iStr:'R  b3  5  b7'},
+    // IV   — dominant 13: bright, soulful subdominant
+    {sym:'13',     intervals:[0,4,7,10,2,9],label:'IV13',    iStr:'R  3  5  b7  9  13'},
+    // V    — 7#9: the Hendrix chord — peak funk tension
+    {sym:'7#9',    intervals:[0,4,7,10,3],  label:'V7#9',    iStr:'R  3  5  b7  #9'},
+    // VI   — minor 9
+    {sym:'m9',     intervals:[0,3,7,10,2],  label:'VIm9',    iStr:'R  b3  5  b7  9'},
+    // VII  — dominant 9: secondary dominant flavor
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'VII9',    iStr:'R  3  5  b7  9'}
+  ],
+
+  // ── Funk Minor (Dorian) ────────────────────────────────────────────────────
+  // Dorian minor is THE funk minor mode (think Superstition, Chameleon)
+  // Everything pushed toward dominant/minor-dominant colors
+  funk_minor: [
+    // I    — minor 9: deep dorian groove
+    {sym:'m9',     intervals:[0,3,7,10,2],  label:'Im9',     iStr:'R  b3  5  b7  9'},
+    // II   — minor 9
+    {sym:'m9',     intervals:[0,3,7,10,2],  label:'IIm9',    iStr:'R  b3  5  b7  9'},
+    // bIII — dominant 9: unexpected brightness
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'bIII9',   iStr:'R  3  5  b7  9'},
+    // IV   — minor 7: grounding subdominant
+    {sym:'m7',     intervals:[0,3,7,10],    label:'IVm7',    iStr:'R  b3  5  b7'},
+    // V    — dominant 13: peak tension
+    {sym:'13',     intervals:[0,4,7,10,2,9],label:'V13',     iStr:'R  3  5  b7  9  13'},
+    // bVI  — dominant 9
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'bVI9',    iStr:'R  3  5  b7  9'},
+    // bVII — dominant 7: the classic Dorian bVII move
+    {sym:'7',      intervals:[0,4,7,10],    label:'bVII7',   iStr:'R  3  5  b7'}
+  ],
+
+  // ── Funk Blues ─────────────────────────────────────────────────────────────
+  funk_blues: [
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'I9',      iStr:'R  3  5  b7  9'},
+    {sym:'13',     intervals:[0,4,7,10,2,9],label:'IV13',    iStr:'R  3  5  b7  9  13'},
+    {sym:'7#9',    intervals:[0,4,7,10,3],  label:'V7#9',    iStr:'R  3  5  b7  #9'},
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'bVII9',   iStr:'R  3  5  b7  9'},
+    {sym:'m9',     intervals:[0,3,7,10,2],  label:'IIm9',    iStr:'R  b3  5  b7  9'},
+    {sym:'9',      intervals:[0,4,7,10,2],  label:'bVI9',    iStr:'R  3  5  b7  9'}
+  ]
+};
+
+var INTERVALS_MAP = {
+  'maj7':[0,4,7,11], 'm7':[0,3,7,10], '7':[0,4,7,10], 'm7b5':[0,3,6,10],
+  '9':[0,4,7,10,2],  'm9':[0,3,7,10,2], '13':[0,4,7,10,2,9], '7#9':[0,4,7,10,3],
+  'sus2':[0,2,7], 'sus4':[0,5,7], 'add9':[0,4,7,2],
+  'qrt':[0,5,10], '5':[0,7], 'maj7sus2':[0,2,7,11], 'm(add9)':[0,3,7,2]
+};
+
+// Helper to pick qualities array based on vibe + mode
+function getQualities(vibe, mode) {
+  if (vibe==='jazz') {
+    if (mode==='major') return CHORD_QUALITIES.jazz_major;
+    if (mode==='minor') return CHORD_QUALITIES.jazz_minor;
+    return CHORD_QUALITIES.jazz_blues;
+  }
+  if (vibe==='funk') {
+    if (mode==='major') return CHORD_QUALITIES.funk_major;
+    if (mode==='minor') return CHORD_QUALITIES.funk_minor;
+    return CHORD_QUALITIES.funk_blues;
+  }
+  return CHORD_QUALITIES.jazz_major;
+}
+
+// ─── Math / Alt Types ─────────────────────────────────────────────────────────
+
+var MATH_TYPES = [
+  {sym:'sus2',     intervals:[0,2,7],    name:'Suspended 2', str:'R  2  5',     desc:'open, floating'},
+  {sym:'sus4',     intervals:[0,5,7],    name:'Suspended 4', str:'R  4  5',     desc:'unresolved tension'},
+  {sym:'add9',     intervals:[0,4,7,2],  name:'Add 9',       str:'R  3  5  9',  desc:'bright, wide'},
+  {sym:'qrt',      intervals:[0,5,10],   name:'Quartal',     str:'R  4  b7',    desc:'stacked 4ths'},
+  {sym:'5',        intervals:[0,7],      name:'Power / No 3',str:'R  5',        desc:'raw, ambiguous'},
+  {sym:'maj7sus2', intervals:[0,2,7,11], name:'Maj7 sus2',   str:'R  2  5  7',  desc:'ethereal shimmer'},
+  {sym:'m(add9)',  intervals:[0,3,7,2],  name:'Minor add9',  str:'R  b3  5  9', desc:'melancholic + color'}
+];
+
+// ─── Curated Voicing Library ──────────────────────────────────────────────────
+//
+// Movable shapes stored as offsets from root fret on rootString.
+// rootString: 0=low E, 1=A, 2=D
+// shape values: integer offset from rootFret | 'x'=mute | 'o'=open
+//
+// JAZZ voicings: fuller, lower on neck, more strings, ring-out friendly
+// FUNK voicings: partial (3-4 strings), higher on neck, punchy and tight
+
+var VOICING_LIBRARY = {
+
+  // ── maj7 — Jazz: full, warm, characteristic jazz sound ───────────────────
+  'maj7': [
+    // Cmaj7 = x32000 style but jazzier — x,3,5,4,5,x
+    {rootString:1, shape:['x',0,2,2,2,'x'],   name:'drop-2 shell'},
+    // E-string root open position (e.g. Emaj7 = 0,2,1,1,0,0)
+    {rootString:0, shape:[0,2,1,1,0,0],       name:'E-shape open'},
+    // A-string root voicing with 7 on top
+    {rootString:1, shape:['x',0,2,1,2,'x'],   name:'A-shape close'},
+    // D-string root — upper register
+    {rootString:2, shape:['x','x',0,2,2,2],   name:'D-shape'}
+  ],
+
+  // ── m7 — Jazz: smooth, full minor 7 ──────────────────────────────────────
+  'm7': [
+    // A-string root — standard fingering
+    {rootString:1, shape:['x',0,2,0,1,0],     name:'A-shape'},
+    // E-string root
+    {rootString:0, shape:[0,2,2,0,3,0],       name:'E-shape'},
+    // D-string compact
+    {rootString:2, shape:['x','x',0,2,1,3],   name:'D-shape'},
+    // Shell — just R b7 b3
+    {rootString:1, shape:['x',0,2,0,1,'x'],   name:'shell (R b3 b7)'}
+  ],
+
+  // ── dom7 — Jazz: clean resolution chord ───────────────────────────────────
+  '7': [
+    {rootString:1, shape:['x',0,2,0,1,2],     name:'A-shape'},
+    {rootString:0, shape:[0,2,2,1,0,0],       name:'E-shape'},
+    {rootString:2, shape:['x','x',0,2,1,2],   name:'D-shape'},
+    // 3-note shell R b7 3 — very common in jazz comping
+    {rootString:1, shape:['x',0,'x',2,1,'x'], name:'shell (R 3 b7)'}
+  ],
+
+  // ── m7b5 — Jazz: half-diminished, moody ───────────────────────────────────
+  'm7b5': [
+    {rootString:1, shape:['x',0,1,2,1,2],     name:'A-shape'},
+    {rootString:0, shape:[0,1,2,0,2,'x'],     name:'E-shape'},
+    {rootString:2, shape:['x','x',0,1,1,2],   name:'D-shape'}
+  ],
+
+  // ── dominant 9 — Funk: THE funk chord, partial upper voicing ─────────────
+  // Classic Nile Rodgers / James Brown shape — tight, punchy, high on neck
+  '9': [
+    // Tight 4-string funk grip — x,R,R+2,R+1,R+3,R+2
+    {rootString:1, shape:['x',0,2,1,3,2],     name:'funk 9th (4-str)'},
+    // Upper 3-string version — very stabby
+    {rootString:1, shape:['x',0,'x',1,3,2],   name:'funk 9th (3-str)'},
+    // E-string root
+    {rootString:0, shape:[0,2,0,1,0,2],       name:'E-shape 9th'},
+    // D-string root
+    {rootString:2, shape:['x','x',0,1,3,2],   name:'D-shape 9th'}
+  ],
+
+  // ── minor 9 — Funk: deep, dark groove chord ───────────────────────────────
+  'm9': [
+    // The go-to funk minor chord — think Superstition
+    {rootString:1, shape:['x',0,2,0,3,2],     name:'funk m9 (4-str)'},
+    // Tighter 3-string version
+    {rootString:1, shape:['x',0,'x',0,3,2],   name:'funk m9 (3-str)'},
+    // D-string root
+    {rootString:2, shape:['x','x',0,0,3,2],   name:'D-shape m9'}
+  ],
+
+  // ── dominant 13 — Funk: soulful, bright dominant color ───────────────────
+  // Drop the 5th and 11th — just R, 3, b7, 13 on 4 strings
+  '13': [
+    // A-string root — classic soul/funk 13th grip
+    {rootString:1, shape:['x',0,2,2,3,2],     name:'soul 13th'},
+    // Tighter: skip low strings
+    {rootString:1, shape:['x',0,'x',2,3,2],   name:'13th (3-str)'},
+    // E-string root
+    {rootString:0, shape:[0,2,2,1,3,0],       name:'E-shape 13th'}
+  ],
+
+  // ── 7#9 — Funk: the Hendrix chord, maximum grit ───────────────────────────
+  // R, 3, b7, #9 — tense, blues-funk, never fully resolves
+  '7#9': [
+    // The canonical Hendrix/funk grip — 5-string A-root
+    {rootString:1, shape:['x',0,2,1,3,3],     name:'Hendrix grip'},
+    // Tighter partial version
+    {rootString:1, shape:['x',0,'x',1,3,3],   name:'7#9 partial'},
+    // E-string root
+    {rootString:0, shape:[0,2,1,1,3,'x'],     name:'E-shape 7#9'}
+  ]
+};
+
+// Math/Alt voicings
+var MATH_VOICINGS = {
+  'sus2': [
+    {rootString:1, shape:['x',0,2,4,3,'x'],   name:'A-shape'},
+    {rootString:0, shape:[0,0,2,2,0,0],       name:'open E'},
+    {rootString:2, shape:['x','x',0,2,3,0],   name:'D-shape'}
+  ],
+  'sus4': [
+    {rootString:1, shape:['x',0,2,2,3,'x'],   name:'A-shape'},
+    {rootString:0, shape:[0,0,2,2,1,0],       name:'open E'},
+    {rootString:2, shape:['x','x',0,2,3,3],   name:'D-shape'}
+  ],
+  'add9': [
+    {rootString:1, shape:['x',0,2,2,0,2],     name:'A-shape'},
+    {rootString:0, shape:[0,2,2,1,0,2],       name:'E-shape'},
+    {rootString:2, shape:['x','x',0,2,3,2],   name:'D-shape'}
+  ],
+  'qrt': [
+    {rootString:1, shape:['x',0,3,2,2,'x'],   name:'4ths (A)'},
+    {rootString:2, shape:['x','x',0,3,3,1],   name:'4ths (D)'},
+    {rootString:0, shape:[0,3,2,2,'x','x'],   name:'4ths (E)'}
+  ],
+  '5': [
+    {rootString:0, shape:[0,2,2,'x','x','x'], name:'low E power'},
+    {rootString:1, shape:['x',0,2,2,'x','x'], name:'A power'},
+    {rootString:2, shape:['x','x',0,2,3,'x'], name:'D power'}
+  ],
+  'maj7sus2': [
+    {rootString:1, shape:['x',0,2,1,0,'x'],   name:'A-shape'},
+    {rootString:2, shape:['x','x',0,2,2,2],   name:'D-shape'}
+  ],
+  'm(add9)': [
+    {rootString:1, shape:['x',0,2,2,1,2],     name:'A-shape'},
+    {rootString:0, shape:[0,2,2,0,0,0],       name:'open E'},
+    {rootString:2, shape:['x','x',0,2,1,2],   name:'D-shape'}
+  ]
+};
+
+// ─── Voicing Resolution ───────────────────────────────────────────────────────
+
+function noteAt(idx){return CHROMATIC[(idx%12+12)%12];}
+
+function getScaleNotes(root,mode){
+  var ri=CHROMATIC.indexOf(root);
+  return SCALES[mode].map(function(iv){return noteAt(ri+iv);});
+}
+
+function resolveShape(rootNote, tpl) {
+  var rootSemi=CHROMATIC.indexOf(rootNote);
+  var rs=tpl.rootString;
+  var openSemi=OPEN_SEMI[rs];
+  var rootFret=(rootSemi-openSemi+12)%12;
+
+  function compute(rf) {
+    var frets=[];
+    for(var i=0;i<6;i++){
+      var v=tpl.shape[i];
+      if(v==='x'||v===null){frets.push(-1);continue;}
+      if(v==='o'){frets.push(0);continue;}
+      frets.push(rf+v);
+    }
+    var active=frets.filter(function(f){return f>0;});
+    if(!active.length) return null;
+    var lo=Math.min.apply(null,active),hi=Math.max.apply(null,active);
+    if(hi-lo>4) return null;
+    return frets;
+  }
+
+  var r1=compute(rootFret);
+  if(r1) return {frets:r1,name:tpl.name};
+  // Try up an octave
+  var r2=compute(rootFret+12);
+  if(r2) return {frets:r2,name:tpl.name};
+  return null;
+}
+
+function pickVoicing(rootNote, sym, lib) {
+  var shapes=lib[sym];
+  if(!shapes||!shapes.length) return {frets:[-1,0,0,0,-1,-1],name:'basic'};
+  var best=null,bestScore=9999;
+  for(var i=0;i<shapes.length;i++){
+    var r=resolveShape(rootNote,shapes[i]);
+    if(!r) continue;
+    var active=r.frets.filter(function(f){return f>=0;});
+    var avg=active.reduce(function(a,b){return a+b;},0)/active.length;
+    var maxF=Math.max.apply(null,active);
+    var score=avg+(maxF>9?6:0)+(maxF>12?6:0);
+    if(score<bestScore){bestScore=score;best=r;}
+  }
+  if(!best){
+    // Hard fallback: 3-note open shell on A string
+    var ri=CHROMATIC.indexOf(rootNote);
+    var ar=((ri-5+12)%12);
+    best={frets:[-1,ar,ar+2,-1,-1,-1],name:'shell'};
+  }
+  return best;
+}
+
+function getVoicing(rootNote,sym){return pickVoicing(rootNote,sym,VOICING_LIBRARY);}
+function getMathVoicing(rootNote,sym){return pickVoicing(rootNote,sym,MATH_VOICINGS);}
+
+// ─── SVG Fret Diagram ─────────────────────────────────────────────────────────
+
+function drawDiagram(frets,scaleSemi,chordSemi){
+  var W=138,H=160;
+  var valid=frets.filter(function(f){return f>0;});
+  var minF=valid.length?Math.min.apply(null,valid):1;
+  var maxF=valid.length?Math.max.apply(null,valid):5;
+  var start=(maxF>5)?Math.max(1,minF):1;
+  var rows=5,pT=30,pL=18,pR=12,pB=22;
+  var sW=(W-pL-pR)/5,fH=(H-pT-pB)/rows;
+
+  var o='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+
+  if(start===1){
+    o+='<rect x="'+pL+'" y="'+(pT-5)+'" width="'+(sW*5)+'" height="5" fill="#c9a84c" rx="1"/>';
+  } else {
+    o+='<text x="'+(pL-6)+'" y="'+(pT+fH*0.65)+'" font-size="8" fill="#6b6450" font-family="IBM Plex Mono" text-anchor="end">'+start+'</text>';
+  }
+
+  for(var f=0;f<=rows;f++){
+    var fy=pT+f*fH;
+    o+='<line x1="'+pL+'" y1="'+fy+'" x2="'+(pL+sW*5)+'" y2="'+fy+'" stroke="'+(f>0&&f<rows?'#252320':'#2e2b24')+'" stroke-width="'+(f>0&&f<rows?'0.8':'1')+'"/>';
+  }
+  for(var s=0;s<6;s++){
+    var sx=pL+s*sW;
+    o+='<line x1="'+sx+'" y1="'+pT+'" x2="'+sx+'" y2="'+(pT+fH*rows)+'" stroke="#2a2822" stroke-width="1.2"/>';
+  }
+
+  // Ghost scale tones
+  var cfl={};
+  frets.forEach(function(fv,si){cfl[si+'-'+fv]=true;});
+  for(var s2=0;s2<6;s2++){
+    for(var rf=1;rf<=rows;rf++){
+      var af=start-1+rf;
+      var nt=(OPEN_SEMI[s2]+af)%12;
+      if(!cfl[s2+'-'+af]&&scaleSemi.indexOf(nt)>=0&&chordSemi.indexOf(nt)<0){
+        var gx=pL+s2*sW,gy=pT+(rf-0.5)*fH,gr=fH*0.26;
+        o+='<circle cx="'+gx+'" cy="'+gy+'" r="'+gr+'" fill="none" stroke="#4a5a4a" stroke-width="1" opacity="0.7"/>';
+        o+='<text x="'+gx+'" y="'+(gy+3.5)+'" text-anchor="middle" font-size="6.5" fill="#5a7a5a" font-family="IBM Plex Mono" opacity="0.85">'+CHROMATIC[nt]+'</text>';
+      }
+    }
+  }
+
+  // Chord dots
+  frets.forEach(function(fv,i){
+    var cx=pL+i*sW,ty=pT-18;
+    if(fv===-1){
+      o+='<text x="'+cx+'" y="'+(ty+12)+'" text-anchor="middle" font-size="10" fill="#2e2b24" font-family="IBM Plex Mono">&#215;</text>';
+    } else if(fv===0){
+      var on=OPEN_SEMI[i]%12;
+      if(chordSemi.indexOf(on)>=0){
+        o+='<circle cx="'+cx+'" cy="'+(ty+8)+'" r="5" fill="none" stroke="#c9a84c" stroke-width="1.5"/>';
+      } else if(scaleSemi.indexOf(on)>=0){
+        o+='<circle cx="'+cx+'" cy="'+(ty+8)+'" r="4" fill="none" stroke="#4a5a4a" stroke-width="1" opacity="0.7"/>';
+        o+='<text x="'+cx+'" y="'+(ty+11)+'" text-anchor="middle" font-size="5.5" fill="#5a7a5a" font-family="IBM Plex Mono">'+CHROMATIC[on]+'</text>';
+      } else {
+        o+='<circle cx="'+cx+'" cy="'+(ty+8)+'" r="4" fill="none" stroke="#3a3830" stroke-width="1"/>';
+      }
+    } else {
+      var df=fv-start+1;
+      if(df>=1&&df<=rows){
+        var dy=pT+(df-0.5)*fH,dr=fH*0.3;
+        o+='<circle cx="'+cx+'" cy="'+dy+'" r="'+dr+'" fill="#c9a84c"/>';
+        if(chordSemi[0]!==undefined&&(OPEN_SEMI[i]+fv)%12===chordSemi[0]){
+          o+='<circle cx="'+cx+'" cy="'+dy+'" r="'+(dr*0.38)+'" fill="#0d0c0a"/>';
+        }
+      }
+    }
+  });
+
+  var lbls=['E','A','D','G','B','e'];
+  for(var lb=0;lb<6;lb++){
+    o+='<text x="'+(pL+lb*sW)+'" y="'+(pT+fH*rows+14)+'" text-anchor="middle" font-size="7.5" fill="#2e2b24" font-family="IBM Plex Mono">'+lbls[lb]+'</text>';
+  }
+  o+='</svg>';
+  return o;
+}
+
+// ─── Card Builders ────────────────────────────────────────────────────────────
+
+function buildChordCards(key,mode,vibe,scaleSemi){
+  var notes=getScaleNotes(key,mode);
+  var quals=getQualities(vibe,mode);
+  return notes.slice(0,quals.length).map(function(note,i){
+    var q=quals[i],sym=q.sym;
+    var ri=CHROMATIC.indexOf(note);
+    var chordSemi=(INTERVALS_MAP[sym]||[0,4,7,10]).map(function(iv){return(ri+iv)%12;});
+    var v=getVoicing(note,sym);
+    return {note:note,sym:sym,type:vibe,frets:v.frets,voicingName:v.name,
+            iStr:q.iStr,degree:q.label,chordSemi:chordSemi,desc:''};
+  });
+}
+
+function buildMathCards(key,scaleSemi){
+  var ri=CHROMATIC.indexOf(key);
+  return MATH_TYPES.map(function(t){
+    var cs=t.intervals.map(function(iv){return(ri+(iv%12)+12)%12;});
+    var v=getMathVoicing(key,t.sym);
+    return {note:key,sym:t.sym,type:'math',frets:v.frets,voicingName:v.name,
+            iStr:t.str,degree:t.name,chordSemi:cs,desc:t.desc};
+  });
+}
+
+// ─── Progressions ─────────────────────────────────────────────────────────────
+
+function buildProgressions(key,mode,vibe){
+  var notes=getScaleNotes(key,mode);
+  var quals=getQualities(vibe,mode);
+  function cf(d){return {name:notes[d%notes.length]+quals[d%quals.length].sym};}
+  var p=[];
+
+  if(vibe==='jazz'){
+    if(mode==='major'||mode==='minor'){
+      p.push({label:'ii – V – I',         chords:[cf(1),cf(4),cf(0)],           feel:'the fundamental jazz move'});
+      p.push({label:'I – vi – ii – V',    chords:[cf(0),cf(5),cf(1),cf(4)],     feel:'rhythm changes — loops beautifully'});
+      p.push({label:'iii – VI – ii – V',  chords:[cf(2),cf(5),cf(1),cf(4)],     feel:'extended turnaround'});
+      p.push({label:'I – IV – iii – VI',  chords:[cf(0),cf(3),cf(2),cf(5)],     feel:'descending voice-led loop'});
+    } else {
+      p.push({label:'I7 – IV7 – V7',      chords:[cf(0),cf(3),cf(4)],           feel:'jazz blues backbone'});
+      p.push({label:'ii – V – I',         chords:[cf(1),cf(4),cf(0)],           feel:'bebop blues cadence'});
+    }
+  }
+
+  if(vibe==='funk'){
+    if(mode==='major'||mode==='minor'){
+      // Funk lives on I — the I chord gets most of the real estate
+      p.push({label:'I9 vamp',            chords:[cf(0)],                       feel:'just sit on it — work the rhythm'});
+      p.push({label:'I9 – IV13',          chords:[cf(0),cf(3)],                 feel:'the classic soul/funk two-chord'});
+      p.push({label:'Im9 – bVII9',        chords:[cf(0),cf(6)],                 feel:'dorian move — dark and heavy'});
+      p.push({label:'I9 – V7#9 – IV13',   chords:[cf(0),cf(4),cf(3)],           feel:'tension and release funk-style'});
+      p.push({label:'IIm9 – V13 – I9',    chords:[cf(1),cf(4),cf(0)],           feel:'funk ii-V-I — groovier resolution'});
+    } else {
+      p.push({label:'I9 – IV13',          chords:[cf(0),cf(1)],                 feel:'blues-funk staple'});
+      p.push({label:'I9 – V7#9',          chords:[cf(0),cf(2)],                 feel:'peak tension blues'});
+    }
+  }
+
+  return p;
+}
+
+function buildMathProgressions(key){
+  var r=CHROMATIC.indexOf(key);
+  function n(i){return CHROMATIC[(r+i+12)%12];}
+  return [
+    {label:'Sus vamp',         chords:[{name:key+'sus2'},{name:n(7)+'sus2'},{name:n(5)+'sus4'},{name:key+'sus2'}],         feel:'floats without resolving — Toe, Yvette Young'},
+    {label:'Quartal stack',    chords:[{name:key+'qrt'},{name:n(5)+'qrt'},{name:n(10)+'qrt'},{name:n(7)+'qrt'}],           feel:'Holdsworth / McCoy Tyner'},
+    {label:'bII substitution', chords:[{name:key+'sus2'},{name:n(1)+'maj7sus2'},{name:n(7)+'sus4'},{name:key+'add9'}],     feel:'tritone color — angular'},
+    {label:'Math cadence',     chords:[{name:key+'add9'},{name:n(9)+'m(add9)'},{name:n(5)+'sus4'},{name:n(4)+'sus2'}],     feel:'Plini / Chon territory'},
+    {label:'Power → color',    chords:[{name:key+'5'},{name:n(7)+'5'},{name:n(3)+'add9'},{name:n(5)+'sus4'}],              feel:'raw → wide open'}
+  ];
+}
+
+// ─── Palette Description ──────────────────────────────────────────────────────
+
+var PALETTE_NOTES = {
+  jazz: {
+    major: 'Full voicings — maj7, m7, m7b5. Chords ring out and resolve through voice leading. The V7 pulls back to I.',
+    minor: 'Dorian minor jazz palette — smooth m7 and maj7 colors with half-diminished tension on VII.',
+    blues: 'Jazz blues — dominant 7ths across all degrees. Bebop comping territory.'
+  },
+  funk: {
+    major: 'I becomes a dominant 9 (mixolydian — no resolution needed). V becomes 7#9 (the Hendrix chord). IV gets a 13th. Everything is partial and punchy.',
+    minor: 'Dorian minor funk — Im9 is home. bVII9 is the signature move. V13 is the tension. Think Superstition, Chameleon.',
+    blues: 'Funk blues — 9ths, 13ths, and the 7#9. Stab and groove, don\'t ring out.'
+  }
+};
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+var currentVibe='jazz';
+document.querySelectorAll('.vibe-btn').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.vibe-btn').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    currentVibe=b.dataset.vibe;
+  });
+});
+
+function generate(){
+  var key=document.getElementById('keySelect').value;
+  var mode=document.getElementById('modeSelect').value;
+  var vibe=currentVibe;
+  var out=document.getElementById('output');
+  out.classList.remove('visible');
+
+  setTimeout(function(){
+    var ri=CHROMATIC.indexOf(key);
+    var scaleSemi=SCALES[mode].map(function(iv){return(ri+iv)%12;});
+    var scaleNotes=getScaleNotes(key,mode);
+    var cards=(vibe==='math')?buildMathCards(key,scaleSemi):buildChordCards(key,mode,vibe,scaleSemi);
+    var progs=(vibe==='math')?buildMathProgressions(key):buildProgressions(key,mode,vibe);
+    var mLabel={major:'Major',minor:'Dorian Minor',blues:'Blues'}[mode];
+    var vLabel={jazz:'Jazz',funk:'Funk',math:'Math / Alt'}[vibe];
+    var accent={jazz:'#4a8fa8',funk:'#d4633a',math:'#9b6fd4'}[vibe];
+    var paletteNote=(vibe!=='math')?(PALETTE_NOTES[vibe]&&PALETTE_NOTES[vibe][mode]?PALETTE_NOTES[vibe][mode]:''):'';
+
+    // Key info bar
+    var h='<div class="key-info" style="border-left-color:'+accent+'">';
+    h+='<div class="key-info-item"><span class="key-info-label">Root</span><span class="key-info-value">'+key+'</span></div>';
+    if(vibe!=='math'){
+      h+='<div class="key-info-item"><span class="key-info-label">Mode</span><span class="key-info-value">'+mLabel+'</span></div>';
+      h+='<div class="key-info-item"><span class="key-info-label">Scale</span><span class="key-info-value">'+scaleNotes.join('  ')+'</span></div>';
+    } else {
+      h+='<div class="key-info-item"><span class="key-info-label">Palette</span><span class="key-info-value">Sus · Quartal · Add9 · No3</span></div>';
+      h+='<div class="key-info-item"><span class="key-info-label">Ref</span><span class="key-info-value" style="color:var(--muted);font-size:0.75rem">Toe · Plini · Chon · Holdsworth</span></div>';
+    }
+    h+='<div class="key-info-item"><span class="key-info-label">Vibe</span><span class="key-info-value" style="color:'+accent+'">'+vLabel+'</span></div>';
+    h+='</div>';
+
+    // Palette note
+    if(paletteNote){
+      h+='<div class="palette-note">'+paletteNote+'</div>';
+    }
+
+    // Legend
+    h+='<div class="legend">';
+    h+='<span class="legend-lbl">Legend</span>';
+    h+='<span class="legend-item" style="color:#8a8070"><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#c9a84c"/></svg>&nbsp;Chord tone</span>';
+    h+='<span class="legend-item" style="color:#8a8070"><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#c9a84c"/><circle cx="7" cy="7" r="2" fill="#0d0c0a"/></svg>&nbsp;Root</span>';
+    h+='<span class="legend-item" style="color:#5a7a5a"><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="none" stroke="#4a5a4a" stroke-width="1.2"/></svg>&nbsp;Scale tone</span>';
+    h+='</div>';
+
+    // Chord cards
+    h+='<div class="section-title" style="color:'+accent+'">'+(vibe==='math'?'Angular Voicings':'Chord Voicings')+'</div>';
+    h+='<div class="chords-grid">';
+    cards.forEach(function(c){
+      var diag=drawDiagram(c.frets,scaleSemi,c.chordSemi);
+      h+='<div class="chord-card" style="border-color:'+(vibe==='math'?'#1e1a2e':'var(--border)')+'">';
+      h+='<div class="chord-name">'+c.note+c.sym+'</div>';
+      h+='<div class="chord-type-tag '+c.type+'">'+c.degree+'</div>';
+      h+='<div class="chord-voicing-name">'+c.voicingName+'</div>';
+      h+=diag;
+      h+='<div class="chord-intervals">'+c.iStr+'</div>';
+      if(c.desc) h+='<div class="chord-desc">'+c.desc+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+
+    // Progressions
+    h+='<div class="section-title" style="color:'+accent+'">Progressions</div>';
+    h+='<div class="progressions-list">';
+    progs.forEach(function(p){
+      h+='<div class="progression-row">';
+      h+='<span class="prog-label">'+p.label+'</span>';
+      h+='<div class="prog-chords">';
+      p.chords.forEach(function(c,idx){
+        if(idx>0) h+='<span class="prog-arrow">&#8594;</span>';
+        h+='<span class="prog-chord">'+c.name+'</span>';
+      });
+      h+='</div>';
+      h+='<span class="prog-feel">'+p.feel+'</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+
+    out.innerHTML=h;
+    out.classList.add('visible');
+  },100);
+}
+
+document.getElementById('generateBtn').addEventListener('click',generate);
+generate();
+</script>
+</body>
+</html>
